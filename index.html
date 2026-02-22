@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kite Simulator - Full Physics</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #00FF9D;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+            margin-bottom: 40px;
+        }
+        
+        .canvas-box {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .view-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .view-btn {
+            padding: 10px 25px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 157, 0.3);
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+        
+        .view-btn:hover {
+            background: rgba(0, 255, 157, 0.1);
+            border-color: #00FF9D;
+        }
+        
+        .view-btn.active {
+            background: #00FF9D;
+            color: #0F0F1E;
+            border-color: #00FF9D;
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+        }
+        
+        canvas {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #00FF9D;
+            border-radius: 8px;
+        }
+        
+        /* WIND INDICATOR */
+        .wind-indicator {
+            background: linear-gradient(135deg, rgba(0, 168, 255, 0.2), rgba(0, 255, 157, 0.2));
+            border: 2px solid #00A8FF;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wind-indicator::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: windFlow 2s infinite;
+        }
+        
+        @keyframes windFlow {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .wind-indicator h3 {
+            color: #00A8FF;
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            letter-spacing: 2px;
+        }
+        
+        .wind-value {
+            font-size: 28px;
+            color: #00FF9D;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+            margin-bottom: 10px;
+        }
+        
+        .wind-bar-container {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        
+        .wind-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00A8FF, #00FF9D);
+            transition: width 0.1s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+        }
+        
+        .wind-profile-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: right;
+        }
+        
+        .simulation-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .sim-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C61);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+        
+        .sim-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+        }
+        
+        .sim-btn.paused {
+            background: linear-gradient(135deg, #00FF9D, #00CC7E);
+        }
+        
+        .sim-btn.reset {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+        
+        .control-group h3 {
+            color: #FF6B35;
+            font-size: 14px;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        
+        .slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .slider-row label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            min-width: 150px;
+        }
+        
+        .slider-row input[type="range"] {
+            flex: 1;
+            margin: 0 15px;
+        }
+        
+        .slider-row select {
+            flex: 1;
+            margin: 0 15px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00FF9D;
+            border-radius: 4px;
+            color: #00FF9D;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .slider-row select option {
+            background: #1A1A2E;
+            color: #00FF9D;
+        }
+        
+        .value {
+            color: #00FF9D;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: right;
+        }
+        
+        input[type="range"] {
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00FF9D;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+        }
+        
+        .auto-trim-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #00FF9D 0%, #00CC7E 100%);
+            border: none;
+            border-radius: 8px;
+            color: #0F0F1E;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
+        }
+        
+        .auto-trim-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.5);
+        }
+        
+        .auto-trim-btn:active {
+            transform: translateY(0);
+        }
+        
+        .auto-trim-btn.calculating {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .save-load-btn {
+            padding: 12px;
+            background: rgba(0, 168, 255, 0.2);
+            border: 2px solid #00A8FF;
+            border-radius: 6px;
+            color: #00A8FF;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .save-load-btn:hover {
+            background: rgba(0, 168, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .pdf-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #FF6B35, #FF8C61);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        
+        .pdf-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(255, 107, 53, 0.5);
+        }
+        
+        .pdf-btn.generating {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            animation: pulse 1s infinite;
+        }
+        
+        .preset-select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid #FFD700;
+            border-radius: 6px;
+            color: #FFD700;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .preset-select option {
+            background: #1A1A2E;
+            color: #FFD700;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        /* CHARTS SECTION */
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid #00FF9D;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .chart-header h3 {
+            color: #00FF9D;
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+        
+        .view-all-btn {
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #00FF9D 0%, #00CC7E 100%);
+            border: none;
+            border-radius: 6px;
+            color: #0F0F1E;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+        
+        .view-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+        }
+        
+        .chart-preview {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .mini-chart {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .mini-chart h4 {
+            color: #00FF9D;
+            font-size: 10px;
+            margin: 0 0 5px 0;
+            letter-spacing: 1px;
+        }
+        
+        .mini-chart canvas {
+            width: 100% !important;
+            height: 60px !important;
+            border: none;
+        }
+        
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 100%);
+            border: 3px solid #00FF9D;
+            border-radius: 12px;
+            padding: 25px;
+            width: 95%;
+            height: 90vh;
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 255, 157, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        
+        .modal-title {
+            color: #00FF9D;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .close-btn {
+            background: rgba(255, 107, 53, 0.3);
+            border: 2px solid #FF6B35;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: #FF6B35;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 107, 53, 0.5);
+            transform: rotate(90deg);
+        }
+        
+        .reset-btn {
+            padding: 8px 16px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid #FFD700;
+            border-radius: 6px;
+            color: #FFD700;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .reset-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* TAB SYSTEM */
+        .tab-container {
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid rgba(0, 255, 157, 0.3);
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: rgba(255, 255, 255, 0.5);
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(0, 255, 157, 0.05);
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .tab-btn.active {
+            background: rgba(0, 255, 157, 0.1);
+            border-bottom-color: #00FF9D;
+            color: #00FF9D;
+        }
+        
+        .tab-content {
+            display: none;
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .chart-canvas-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .chart-canvas-wrapper canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .chart-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+        }
+        
+        .output-box {
+            background: rgba(0, 255, 157, 0.1);
+            border: 2px solid #00FF9D;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .output-box h3 {
+            color: #00FF9D;
+            font-size: 14px;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .data-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .data-value {
+            color: #00FF9D;
+            font-weight: bold;
+        }
+        
+        .stability-indicator {
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .stable {
+            background: rgba(0, 255, 157, 0.2);
+            border: 2px solid #00FF9D;
+            color: #00FF9D;
+        }
+        
+        .unstable {
+            background: rgba(255, 107, 53, 0.2);
+            border: 2px solid #FF6B35;
+            color: #FF6B35;
+        }
+        
+        .trim-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #FFD700;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #FFD700;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪁 KITE SIMULATOR - FULL PHYSICS</h1>
+        
+        <!-- WIND INDICATOR -->
+        <div class="wind-indicator">
+            <h3>🌬️ REAL-TIME WIND</h3>
+            <div class="wind-value" id="currentWindValue">15.0 mph</div>
+            <div class="wind-bar-container">
+                <div class="wind-bar" id="windBar" style="width: 18.75%;"></div>
+            </div>
+            <div class="wind-profile-label" id="windProfileLabel">Profile: STEADY</div>
+        </div>
+        
+        <!-- SIMULATION CONTROLS -->
+        <div class="simulation-controls">
+            <button class="sim-btn paused" id="playPauseBtn" onclick="toggleSimulation()">▶ PLAY</button>
+            <button class="sim-btn reset" onclick="resetSimulation()">🔄 RESET</button>
+        </div>
+        
+        <!-- VIEW SELECTOR -->
+        <div class="view-selector">
+            <button class="view-btn active" onclick="switchView('front')">⬜ FRONT</button>
+            <button class="view-btn" onclick="switchView('side')">◀ SIDE</button>
+            <button class="view-btn" onclick="switchView('field')">🌍 FIELD</button>
+        </div>
+        
+        <!-- CANVAS -->
+        <div class="canvas-box">
+            <canvas id="kiteCanvas" width="700" height="450"></canvas>
+        </div>
+        
+        <!-- CHARTS SECTION -->
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>📊 ANALYSIS CHARTS</h3>
+                <button class="view-all-btn" onclick="openChartsModal()">📊 VIEW ALL CHARTS</button>
+            </div>
+            <div class="chart-preview">
+                <div class="mini-chart">
+                    <h4>TORQUE</h4>
+                    <canvas id="miniTorque" height="60"></canvas>
+                </div>
+                <div class="mini-chart">
+                    <h4>FORCES</h4>
+                    <canvas id="miniForces" height="60"></canvas>
+                </div>
+                <div class="mini-chart">
+                    <h4>STABILITY</h4>
+                    <canvas id="miniStability" height="60"></canvas>
+                </div>
+                <div class="mini-chart">
+                    <h4>WIND ENVELOPE</h4>
+                    <canvas id="miniWind" height="60"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CHARTS MODAL -->
+        <div id="chartsModal" class="modal" onclick="closeChartsModal(event)">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 class="modal-title">📊 ANALYSIS CHARTS - FULL VIEW</h3>
+                    <div class="modal-buttons">
+                        <button class="reset-btn" onclick="resetChartZoom()">🔄 RESET ZOOM</button>
+                        <button class="close-btn" onclick="closeChartsModal()">✕</button>
+                    </div>
+                </div>
+                
+                <!-- TABS -->
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="switchTab('torque')">📈 TORQUE</button>
+                        <button class="tab-btn" onclick="switchTab('forces')">⚡ LIFT/DRAG</button>
+                        <button class="tab-btn" onclick="switchTab('stability')">🎯 STABILITY</button>
+                        <button class="tab-btn" onclick="switchTab('wind')">🌬️ WIND ENVELOPE</button>
+                    </div>
+                </div>
+                
+                <!-- TAB CONTENTS -->
+                <div id="torqueTab" class="tab-content active">
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="torqueChartLarge"></canvas>
+                        <div class="chart-info">
+                            💡 Mouse Wheel: Zoom | Ctrl+Drag: Pan | Double-Click: Reset
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="forcesTab" class="tab-content">
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="forcesChartLarge"></canvas>
+                        <div class="chart-info">
+                            💡 Mouse Wheel: Zoom | Ctrl+Drag: Pan
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="stabilityTab" class="tab-content">
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="stabilityChartLarge"></canvas>
+                        <div class="chart-info">
+                            💡 Green = Stable | Yellow = Marginal | Red = Unstable | White Dot = Current
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="windTab" class="tab-content">
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="windChartLarge"></canvas>
+                        <div class="chart-info">
+                            💡 Blue Area = Flies | Red Area = Too Heavy | Yellow Line = Current Wind
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONTROLS -->
+        <div class="control-group">
+            <h3>KITE GEOMETRY</h3>
+            
+            <div class="slider-row">
+                <label>Kite Type:</label>
+                <select id="kiteTypeSelect">
+                    <option value="diamond">💎 Diamond (Classic)</option>
+                    <option value="delta">🔺 Delta (Modern)</option>
+                    <option value="box">📦 Box Kite (3D)</option>
+                    <option value="fighter">⚔️ Fighter (Agile)</option>
+                </select>
+                <span class="value" id="kiteTypeValue">Diamond</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Width:</label>
+                <input type="range" id="widthSlider" min="10" max="60" value="30" step="1">
+                <span class="value" id="widthValue">30 in</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Height:</label>
+                <input type="range" id="heightSlider" min="10" max="72" value="36" step="1">
+                <span class="value" id="heightValue">36 in</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Kite Weight:</label>
+                <input type="range" id="weightSlider" min="0.1" max="5" value="0.5" step="0.1">
+                <span class="value" id="weightValue">0.5 lbs</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>BRIDLE SETTINGS</h3>
+            
+            <div class="slider-row">
+                <label>Bridle Length:</label>
+                <input type="range" id="bridleLengthSlider" min="24" max="96" value="48" step="1">
+                <span class="value" id="bridleLengthValue">48 in</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Knot Position:</label>
+                <input type="range" id="knotPositionSlider" min="6" max="60" value="24" step="1">
+                <span class="value" id="knotPositionValue">24 in</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>🎀 TAIL SETTINGS</h3>
+            
+            <div class="slider-row">
+                <label>Tail Length:</label>
+                <input type="range" id="tailLengthSlider" min="0" max="100" value="0" step="5">
+                <span class="value" id="tailLengthValue">0 in (No Tail)</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Tail Weight:</label>
+                <input type="range" id="tailWeightSlider" min="0" max="2" value="0.2" step="0.1">
+                <span class="value" id="tailWeightValue">0.2 lbs</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Tail Type:</label>
+                <select id="tailTypeSelect">
+                    <option value="ribbon">🎀 Ribbon (Light)</option>
+                    <option value="streamer">🎗️ Streamer (Medium)</option>
+                    <option value="bow">🎁 Bow (Heavy)</option>
+                </select>
+                <span class="value" id="tailTypeValue">Ribbon</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <h3>FLIGHT CONDITIONS</h3>
+            
+            <div class="slider-row">
+                <label>Base Wind Speed:</label>
+                <input type="range" id="windSlider" min="5" max="80" value="15" step="1">
+                <span class="value" id="windValue">15 mph</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Wind Profile:</label>
+                <select id="windProfileSelect">
+                    <option value="steady">Steady (Constant)</option>
+                    <option value="gust">Gust (Realistic)</option>
+                    <option value="turbulent">Turbulent (Chaotic)</option>
+                </select>
+                <span class="value" id="windProfileValue">Steady</span>
+            </div>
+            
+            <div class="slider-row" id="gustIntensityRow" style="display: none;">
+                <label>Gust Intensity:</label>
+                <input type="range" id="gustIntensitySlider" min="0" max="100" value="50" step="5">
+                <span class="value" id="gustIntensityValue">50%</span>
+            </div>
+            
+            <div class="slider-row" id="gustFrequencyRow" style="display: none;">
+                <label>Gust Frequency:</label>
+                <input type="range" id="gustFrequencySlider" min="1" max="10" value="3" step="0.5">
+                <span class="value" id="gustFrequencyValue">3.0 sec</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Angle of Attack:</label>
+                <input type="range" id="angleSlider" min="0" max="45" value="15" step="0.5">
+                <span class="value" id="angleValue">15.0°</span>
+            </div>
+            
+            <div class="slider-row">
+                <label>Line Length:</label>
+                <input type="range" id="lineLengthSlider" min="25" max="300" value="100" step="5">
+                <span class="value" id="lineLengthValue">100 ft</span>
+            </div>
+            
+            <button id="autoTrimBtn" class="auto-trim-btn">🎯 AUTO-TRIM (Find Best Angle)</button>
+            
+            <div id="trimInfo" class="trim-info" style="display: none;">
+                Searching for optimal trim angle...
+            </div>
+        </div>
+        
+        <!-- OUTPUTS -->
+        <div class="output-box">
+            <h3>FORCES & COEFFICIENTS</h3>
+            
+            <div class="data-row">
+                <span class="data-label">Lift Force:</span>
+                <span class="data-value" id="liftOut" style="color: #00A8FF;">--- lbs</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Drag Force:</span>
+                <span class="data-value" id="dragOut" style="color: #FF6B35;">--- lbs</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Weight (Total):</span>
+                <span class="data-value" id="weightOut" style="color: #FFD700;">--- lbs</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Net Lift:</span>
+                <span class="data-value" id="netLiftOut" style="color: #00FF9D;">--- lbs</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Tension:</span>
+                <span class="data-value" id="tensionOut" style="color: #FF00FF;">--- lbs</span>
+            </div>
+        </div>
+        
+        <div class="output-box" style="margin-top: 20px;">
+            <h3>STABILITY & BALANCE</h3>
+            
+            <div class="data-row">
+                <span class="data-label">Center of Gravity (CG):</span>
+                <span class="data-value" id="cgOut" style="color: #FF0000;">--- in</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Center of Pressure (CP):</span>
+                <span class="data-value" id="cpOut" style="color: #00FF9D;">--- in</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Torque:</span>
+                <span class="data-value" id="torqueOut">--- lb·in</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Aspect Ratio:</span>
+                <span class="data-value" id="arOut">---</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Tail Effect:</span>
+                <span class="data-value" id="tailEffectOut" style="color: #FF6BFF;">No Tail</span>
+            </div>
+            
+            <div id="stabilityIndicator" class="stability-indicator stable">
+                ✓ STABLE
+            </div>
+        </div>
+        
+        <div class="output-box" style="margin-top: 20px;">
+            <h3>FLIGHT DATA</h3>
+            
+            <div class="data-row">
+                <span class="data-label">Flight Height:</span>
+                <span class="data-value" id="flightHeightOut" style="color: #00A8FF;">--- ft</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Horizontal Distance:</span>
+                <span class="data-value" id="horizDistOut" style="color: #00FF9D;">--- ft</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Line Length:</span>
+                <span class="data-value" id="lineLengthOut">--- ft</span>
+            </div>
+            
+            <div class="data-row">
+                <span class="data-label">Bridle Angle:</span>
+                <span class="data-value" id="bridleAngleOut">--- °</span>
+            </div>
+        </div>
+        
+        <!-- SAVE/LOAD SECTION -->
+        <div class="control-group" style="margin-top: 20px;">
+            <h3>💾 SAVE / LOAD DESIGN</h3>
+            
+            <select class="preset-select" onchange="loadPreset(this.value)">
+                <option value="">📋 Select Preset Design...</option>
+                <option value="standard">Standard Diamond</option>
+                <option value="large">Large Delta</option>
+                <option value="light">Light Wind Special</option>
+                <option value="heavy">Heavy Wind Fighter</option>
+            </select>
+            
+            <div class="button-group">
+                <button class="save-load-btn" onclick="saveDesign()">💾 SAVE DESIGN</button>
+                <button class="save-load-btn" onclick="document.getElementById('fileInput').click()">📂 LOAD DESIGN</button>
+            </div>
+            
+            <button id="pdfBtn" class="pdf-btn" onclick="generatePDF()">📄 GENERATE PDF REPORT</button>
+            
+            <input type="file" id="fileInput" accept=".json" onchange="loadDesign(event)">
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        // CANVAS
+        const canvas = document.getElementById('kiteCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // VIEW STATE
+        let currentView = 'front';
+        let currentTab = 'torque';
+        
+        // SIMULATION STATE
+        let isSimulationRunning = false;
+        let simulationTime = 0;
+        let animationFrameId = null;
+        
+        // PARAMETERS
+        let width = 30;
+        let height = 36;
+        let baseWind = 15;
+        let currentWind = 15;
+        let angle = 15;
+        let weight = 0.5;
+        let bridleLength = 48;
+        let knotPosition = 24;
+        let lineLength = 100;
+        let kiteType = 'diamond';
+        
+        // TAIL PARAMETERS
+        let tailLength = 0;
+        let tailWeight = 0.2;
+        let tailType = 'ribbon';
+        
+        // WIND PROFILE
+        let windProfile = 'steady';
+        let gustIntensity = 50;
+        let gustFrequency = 3;
+        
+        // CONSTANTS
+        const PI = Math.PI;
+        const density = 0.00237;
+        
+        // CHART INSTANCES
+        let miniCharts = { torque: null, forces: null, stability: null, wind: null };
+        let largeCharts = { torque: null, forces: null, stability: null, wind: null };
+        
+        // PRESET DESIGNS
+        const presets = {
+            standard: {
+                width: 30, height: 36, weight: 0.5, bridleLength: 48,
+                knotPosition: 24, wind: 15, angle: 15, lineLength: 100, kiteType: 'diamond',
+                tailLength: 0, tailWeight: 0.2, tailType: 'ribbon'
+            },
+            large: {
+                width: 48, height: 60, weight: 1.2, bridleLength: 72,
+                knotPosition: 30, wind: 20, angle: 18, lineLength: 150, kiteType: 'delta',
+                tailLength: 40, tailWeight: 0.5, tailType: 'streamer'
+            },
+            light: {
+                width: 36, height: 48, weight: 0.3, bridleLength: 54,
+                knotPosition: 28, wind: 8, angle: 12, lineLength: 120, kiteType: 'diamond',
+                tailLength: 60, tailWeight: 0.3, tailType: 'ribbon'
+            },
+            heavy: {
+                width: 24, height: 30, weight: 0.8, bridleLength: 42,
+                knotPosition: 20, wind: 35, angle: 20, lineLength: 80, kiteType: 'fighter',
+                tailLength: 30, tailWeight: 0.4, tailType: 'bow'
+            }
+        };
+
+        // PDF GENERATION
+        async function generatePDF() {
+            const btn = document.getElementById('pdfBtn');
+            btn.classList.add('generating');
+            btn.textContent = '⏳ GENERATING PDF...';
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF();
+                const physics = calculatePhysics();
+                
+                // PAGE 1: DESIGN SUMMARY
+                pdf.setFontSize(24);
+                pdf.setTextColor(0, 255, 157);
+                pdf.text('🪁 KITE DESIGN REPORT', 20, 20);
+                
+                pdf.setFontSize(10);
+                pdf.setTextColor(150, 150, 150);
+                const now = new Date();
+                pdf.text(`Generated: ${now.toLocaleString()}`, 20, 28);
+                
+                pdf.setDrawColor(0, 255, 157);
+                pdf.line(20, 32, 190, 32);
+                
+                // Specifications
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('KITE SPECIFICATIONS', 20, 45);
+                
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const kiteLabels = {'diamond': 'Diamond', 'delta': 'Delta', 'box': 'Box Kite', 'fighter': 'Fighter'};
+                const specs = [
+                    `Type: ${kiteLabels[kiteType]}`,
+                    `Width: ${width} in`,
+                    `Height: ${height} in`,
+                    `Kite Weight: ${weight.toFixed(1)} lbs`,
+                    tailLength > 0 ? `Tail: ${tailLength} in ${tailType.charAt(0).toUpperCase() + tailType.slice(1)} (${tailWeight.toFixed(1)} lbs)` : 'Tail: None'
+                ];
+                
+                let yPos = 52;
+                specs.forEach(spec => {
+                    pdf.text(`• ${spec}`, 25, yPos);
+                    yPos += 7;
+                });
+                
+                // Performance Summary
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('PERFORMANCE SUMMARY', 20, yPos + 10);
+                
+                yPos += 17;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const perfData = [
+                    `Stability: ${physics.isStable ? '✓ STABLE' : '⚠ UNSTABLE'}`,
+                    `Net Lift: ${physics.netLift.toFixed(3)} lbs`,
+                    `Flight Height: ${physics.flightHeight.toFixed(1)} ft`,
+                    `Optimal Wind: ${baseWind} mph (${windProfile.charAt(0).toUpperCase() + windProfile.slice(1)})`,
+                    `Bridle Angle: ${physics.bridleAngle.toFixed(1)}°`
+                ];
+                
+                perfData.forEach(data => {
+                    pdf.text(`• ${data}`, 25, yPos);
+                    yPos += 7;
+                });
+                
+                // Bridle Settings
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('BRIDLE CONFIGURATION', 20, yPos + 10);
+                
+                yPos += 17;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const bridleData = [
+                    `Bridle Length: ${bridleLength} in`,
+                    `Knot Position: ${knotPosition} in from bottom`,
+                    `Line Length: ${lineLength} ft`
+                ];
+                
+                bridleData.forEach(data => {
+                    pdf.text(`• ${data}`, 25, yPos);
+                    yPos += 7;
+                });
+                
+                // PAGE 2: CHARTS
+                pdf.addPage();
+                pdf.setFontSize(20);
+                pdf.setTextColor(0, 255, 157);
+                pdf.text('ANALYSIS CHARTS', 20, 20);
+                
+                pdf.setDrawColor(0, 255, 157);
+                pdf.line(20, 25, 190, 25);
+                
+                // Capture charts as images
+                const torqueImg = document.getElementById('miniTorque').toDataURL('image/png');
+                const forcesImg = document.getElementById('miniForces').toDataURL('image/png');
+                const stabilityImg = document.getElementById('miniStability').toDataURL('image/png');
+                const windImg = document.getElementById('miniWind').toDataURL('image/png');
+                
+                // Add charts
+                pdf.setFontSize(12);
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Torque vs Angle of Attack', 20, 35);
+                pdf.addImage(torqueImg, 'PNG', 20, 40, 170, 50);
+                
+                pdf.text('Lift & Drag Forces', 20, 100);
+                pdf.addImage(forcesImg, 'PNG', 20, 105, 170, 50);
+                
+                pdf.text('Stability Map', 20, 165);
+                pdf.addImage(stabilityImg, 'PNG', 20, 170, 170, 50);
+                
+                // PAGE 3: DETAILED ANALYSIS
+                pdf.addPage();
+                pdf.setFontSize(20);
+                pdf.setTextColor(0, 255, 157);
+                pdf.text('DETAILED ANALYSIS', 20, 20);
+                
+                pdf.setDrawColor(0, 255, 157);
+                pdf.line(20, 25, 190, 25);
+                
+                // Force Analysis
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('FORCE ANALYSIS', 20, 38);
+                
+                yPos = 45;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const forceData = [
+                    `Lift Force: ${physics.lift.toFixed(3)} lbs`,
+                    `Drag Force: ${physics.drag.toFixed(3)} lbs`,
+                    `Total Weight: ${physics.weight.toFixed(3)} lbs`,
+                    `Net Lift: ${physics.netLift.toFixed(3)} lbs`,
+                    `Tension: ${physics.tension.toFixed(3)} lbs`,
+                    `Lift Coefficient (CL): ${physics.cl.toFixed(3)}`,
+                    `Drag Coefficient (CD): ${physics.cd.toFixed(3)}`
+                ];
+                
+                forceData.forEach(data => {
+                    pdf.text(`• ${data}`, 25, yPos);
+                    yPos += 6;
+                });
+                
+                // Stability Analysis
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('STABILITY ANALYSIS', 20, yPos + 10);
+                
+                yPos += 17;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const stabilityData = [
+                    `Center of Gravity (CG): ${physics.cg.toFixed(2)} in`,
+                    `Center of Pressure (CP): ${physics.cp.toFixed(2)} in`,
+                    `Torque: ${physics.torque.toFixed(3)} lb·in`,
+                    `Aspect Ratio: ${physics.ar.toFixed(2)}`,
+                    tailLength > 0 ? `Tail Stability Bonus: +${((physics.stabilityBonus - 1) * 100).toFixed(0)}%` : 'No Tail'
+                ];
+                
+                stabilityData.forEach(data => {
+                    pdf.text(`• ${data}`, 25, yPos);
+                    yPos += 6;
+                });
+                
+                // Flight Conditions
+                pdf.setFontSize(14);
+                pdf.setTextColor(255, 107, 53);
+                pdf.text('FLIGHT CONDITIONS', 20, yPos + 10);
+                
+                yPos += 17;
+                pdf.setFontSize(11);
+                pdf.setTextColor(0, 0, 0);
+                const flightData = [
+                    `Base Wind Speed: ${baseWind} mph`,
+                    `Wind Profile: ${windProfile.charAt(0).toUpperCase() + windProfile.slice(1)}`,
+                    windProfile !== 'steady' ? `Gust Intensity: ${gustIntensity}%` : '',
+                    windProfile === 'gust' ? `Gust Frequency: ${gustFrequency.toFixed(1)} sec` : '',
+                    `Angle of Attack: ${angle.toFixed(1)}°`,
+                    `Flight Height: ${physics.flightHeight.toFixed(1)} ft`,
+                    `Horizontal Distance: ${physics.horizontalDistance.toFixed(1)} ft`
+                ].filter(Boolean);
+                
+                flightData.forEach(data => {
+                    pdf.text(`• ${data}`, 25, yPos);
+                    yPos += 6;
+                });
+                
+                // Wind Envelope Chart
+                pdf.text('Wind Envelope', 20, yPos + 10);
+                pdf.addImage(windImg, 'PNG', 20, yPos + 15, 170, 50);
+                
+                // Footer
+                pdf.setFontSize(8);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text('Generated by Kite Simulator - Full Physics Engine', 105, 285, { align: 'center' });
+                
+                // Save PDF
+                pdf.save(`kite_design_report_${Date.now()}.pdf`);
+                
+                btn.classList.remove('generating');
+                btn.textContent = '✅ PDF GENERATED!';
+                
+                setTimeout(() => {
+                    btn.textContent = '📄 GENERATE PDF REPORT';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                btn.classList.remove('generating');
+                btn.textContent = '❌ ERROR - TRY AGAIN';
+                
+                setTimeout(() => {
+                    btn.textContent = '📄 GENERATE PDF REPORT';
+                }, 3000);
+            }
+        }
+        
+        // [REST OF THE CODE CONTINUES EXACTLY AS BEFORE - ALL FUNCTIONS REMAIN UNCHANGED]
+        // [Including: wind functions, simulation, charts, physics, drawing, UI updates, event listeners]
+        // [I'll include the essential ones for completeness]
+
+        function updateWindProfile() {
+            if (windProfile === 'steady') {
+                currentWind = baseWind;
+            } else if (windProfile === 'gust') {
+                const gustCycle = Math.sin(simulationTime / gustFrequency);
+                const gustAmount = (gustIntensity / 100) * baseWind * 0.5;
+                currentWind = baseWind + gustAmount * gustCycle;
+            } else if (windProfile === 'turbulent') {
+                const turbAmount = (gustIntensity / 100) * baseWind * 0.3;
+                currentWind = baseWind + (Math.random() - 0.5) * 2 * turbAmount;
+            }
+            currentWind = Math.max(0, Math.min(100, currentWind));
+            document.getElementById('currentWindValue').textContent = currentWind.toFixed(1) + ' mph';
+            const windPercent = (currentWind / 80) * 100;
+            document.getElementById('windBar').style.width = windPercent + '%';
+        }
+        
+        function simulationLoop() {
+            if (!isSimulationRunning) return;
+            simulationTime += 0.016;
+            updateWindProfile();
+            updateUI();
+            animationFrameId = requestAnimationFrame(simulationLoop);
+        }
+        
+        function toggleSimulation() {
+            isSimulationRunning = !isSimulationRunning;
+            const btn = document.getElementById('playPauseBtn');
+            if (isSimulationRunning) {
+                btn.textContent = '⏸ PAUSE';
+                btn.classList.remove('paused');
+                simulationLoop();
+            } else {
+                btn.textContent = '▶ PLAY';
+                btn.classList.add('paused');
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            }
+        }
+        
+        function resetSimulation() {
+            isSimulationRunning = false;
+            simulationTime = 0;
+            currentWind = baseWind;
+            const btn = document.getElementById('playPauseBtn');
+            btn.textContent = '▶ PLAY';
+            btn.classList.add('paused');
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            updateUI();
+        }
+        
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            updateLargeChart(tabName);
+        }
+        
+        function openChartsModal() {
+            document.getElementById('chartsModal').classList.add('active');
+            updateLargeChart(currentTab);
+        }
+        
+        function closeChartsModal(event) {
+            if (!event || event.target === document.getElementById('chartsModal')) {
+                document.getElementById('chartsModal').classList.remove('active');
+            }
+        }
+        
+        function resetChartZoom() {
+            if (largeCharts[currentTab]) largeCharts[currentTab].resetZoom();
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeChartsModal();
+        });
+        
+        function saveDesign() {
+            const design = {
+                name: "My Kite Design",
+                timestamp: new Date().toISOString(),
+                parameters: { 
+                    width, height, weight, bridleLength, knotPosition, 
+                    wind: baseWind, angle, lineLength, kiteType,
+                    windProfile, gustIntensity, gustFrequency,
+                    tailLength, tailWeight, tailType
+                },
+                physics: calculatePhysics()
+            };
+            const dataStr = JSON.stringify(design, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `kite_design_${Date.now()}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            alert('✅ Design saved successfully!');
+        }
+        
+        function loadDesign(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const design = JSON.parse(e.target.result);
+                    const params = design.parameters;
+                    width = params.width;
+                    height = params.height;
+                    weight = params.weight;
+                    bridleLength = params.bridleLength;
+                    knotPosition = params.knotPosition;
+                    baseWind = params.wind || 15;
+                    angle = params.angle;
+                    lineLength = params.lineLength;
+                    kiteType = params.kiteType || 'diamond';
+                    windProfile = params.windProfile || 'steady';
+                    gustIntensity = params.gustIntensity || 50;
+                    gustFrequency = params.gustFrequency || 3;
+                    tailLength = params.tailLength || 0;
+                    tailWeight = params.tailWeight || 0.2;
+                    tailType = params.tailType || 'ribbon';
+                    updateAllSliders();
+                    resetSimulation();
+                    updateUI();
+                    alert('✅ Design loaded successfully!');
+                } catch (err) {
+                    alert('❌ Error loading design: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        function loadPreset(presetName) {
+            if (!presetName) return;
+            const preset = presets[presetName];
+            if (!preset) return;
+            width = preset.width;
+            height = preset.height;
+            weight = preset.weight;
+            bridleLength = preset.bridleLength;
+            knotPosition = preset.knotPosition;
+            baseWind = preset.wind;
+            angle = preset.angle;
+            lineLength = preset.lineLength;
+            kiteType = preset.kiteType || 'diamond';
+            tailLength = preset.tailLength || 0;
+            tailWeight = preset.tailWeight || 0.2;
+            tailType = preset.tailType || 'ribbon';
+            updateAllSliders();
+            resetSimulation();
+            updateUI();
+            event.target.value = '';
+        }
+        
+        function updateAllSliders() {
+            document.getElementById('widthSlider').value = width;
+            document.getElementById('widthValue').textContent = width + ' in';
+            document.getElementById('heightSlider').value = height;
+            document.getElementById('heightValue').textContent = height + ' in';
+            document.getElementById('weightSlider').value = weight;
+            document.getElementById('weightValue').textContent = weight.toFixed(1) + ' lbs';
+            document.getElementById('bridleLengthSlider').value = bridleLength;
+            document.getElementById('bridleLengthValue').textContent = bridleLength + ' in';
+            document.getElementById('knotPositionSlider').value = knotPosition;
+            document.getElementById('knotPositionValue').textContent = knotPosition + ' in';
+            document.getElementById('windSlider').value = baseWind;
+            document.getElementById('windValue').textContent = baseWind + ' mph';
+            document.getElementById('angleSlider').value = angle;
+            document.getElementById('angleValue').textContent = angle.toFixed(1) + '°';
+            document.getElementById('lineLengthSlider').value = lineLength;
+            document.getElementById('lineLengthValue').textContent = lineLength + ' ft';
+            document.getElementById('kiteTypeSelect').value = kiteType;
+            const labels = {'diamond': 'Diamond', 'delta': 'Delta', 'box': 'Box Kite', 'fighter': 'Fighter'};
+            document.getElementById('kiteTypeValue').textContent = labels[kiteType];
+            document.getElementById('windProfileSelect').value = windProfile;
+            const profileLabels = {'steady': 'Steady', 'gust': 'Gust', 'turbulent': 'Turbulent'};
+            document.getElementById('windProfileValue').textContent = profileLabels[windProfile];
+            document.getElementById('gustIntensitySlider').value = gustIntensity;
+            document.getElementById('gustIntensityValue').textContent = gustIntensity + '%';
+            document.getElementById('gustFrequencySlider').value = gustFrequency;
+            document.getElementById('gustFrequencyValue').textContent = gustFrequency.toFixed(1) + ' sec';
+            document.getElementById('tailLengthSlider').value = tailLength;
+            document.getElementById('tailLengthValue').textContent = tailLength > 0 ? tailLength + ' in' : '0 in (No Tail)';
+            document.getElementById('tailWeightSlider').value = tailWeight;
+            document.getElementById('tailWeightValue').textContent = tailWeight.toFixed(1) + ' lbs';
+            document.getElementById('tailTypeSelect').value = tailType;
+            const tailLabels = {'ribbon': 'Ribbon', 'streamer': 'Streamer', 'bow': 'Bow'};
+            document.getElementById('tailTypeValue').textContent = tailLabels[tailType];
+            
+            const showGustControls = windProfile !== 'steady';
+            document.getElementById('gustIntensityRow').style.display = showGustControls ? '' : 'none';
+            const showFreqControls = windProfile === 'gust';
+            document.getElementById('gustFrequencyRow').style.display = showFreqControls ? '' : 'none';
+        }
+        
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            drawKite();
+        }
+        
+        function calculatePhysics() {
+            let areaFactor = 0.5, cpFactor = 0.75;
+            
+            if (kiteType === 'diamond') {
+                areaFactor = 0.5; cpFactor = 0.75;
+            } else if (kiteType === 'delta') {
+                areaFactor = 0.5; cpFactor = 0.67;
+            } else if (kiteType === 'box') {
+                areaFactor = 2.0; cpFactor = 0.50;
+            } else if (kiteType === 'fighter') {
+                areaFactor = 0.4; cpFactor = 0.75;
+            }
+            
+            const area = (width * height * areaFactor) / 144;
+            const span = width / 12;
+            const ar = (span * span) / area;
+            const angleRad = angle * PI / 180;
+            const cl = (2 * PI * angleRad) / (1 + (2 * angleRad) / ar);
+            const cd = 1.28 * Math.sin(angleRad) + (cl * cl) / (0.7 * PI * ar);
+            const windFps = currentWind * 5280 / 3600;
+            const lift = 0.5 * cl * density * windFps * windFps * area;
+            let drag = 0.5 * cd * density * windFps * windFps * area;
+            
+            let tailDragMultiplier = 1.0;
+            if (tailType === 'ribbon') tailDragMultiplier = 1.0;
+            else if (tailType === 'streamer') tailDragMultiplier = 1.3;
+            else if (tailType === 'bow') tailDragMultiplier = 1.6;
+            
+            const tailDrag = tailLength > 0 ? 
+                (tailLength / 100) * (tailWeight + 0.1) * 0.3 * tailDragMultiplier * windFps * windFps * density : 0;
+            drag += tailDrag;
+            
+            const kiteWeightMoment = weight * (height / 2);
+            const tailWeightMoment = tailLength > 0 ? tailWeight * (height + tailLength / 2) : 0;
+            const totalWeight = weight + (tailLength > 0 ? tailWeight : 0);
+            const cg = (kiteWeightMoment + tailWeightMoment) / totalWeight;
+            
+            const cp = height * cpFactor;
+            const xbr = 0;
+            const ybr = knotPosition;
+            
+            const torque = - lift * Math.cos(angleRad) * (ybr - cp)
+                          - lift * Math.sin(angleRad) * xbr
+                          + drag * Math.cos(angleRad) * xbr
+                          - drag * Math.sin(angleRad) * (ybr - cp)
+                          + totalWeight * Math.cos(angleRad) * (ybr - cg)
+                          + totalWeight * Math.sin(angleRad) * xbr;
+            
+            const stabilityBonus = tailLength > 0 ? 1 + (tailLength / 200) : 1;
+            const adjustedTorque = torque / stabilityBonus;
+            
+            const isStable = (Math.abs(adjustedTorque) < 5.0) && (lift > totalWeight);
+            const netLift = lift - totalWeight;
+            
+            let tension = 0, bridleAngle = 0;
+            if (netLift > 0) {
+                tension = Math.sqrt(netLift * netLift + drag * drag);
+                bridleAngle = Math.atan2(netLift, drag) * 180 / PI;
+            }
+            
+            let flightHeight = 0, horizontalDistance = 0;
+            if (netLift > 0) {
+                const bridleAngleRad = bridleAngle * PI / 180;
+                flightHeight = lineLength * Math.sin(bridleAngleRad) * 0.7;
+                horizontalDistance = lineLength * Math.cos(bridleAngleRad) * 0.85;
+                flightHeight = Math.max(0, Math.min(flightHeight, lineLength));
+                horizontalDistance = Math.max(0, Math.min(horizontalDistance, lineLength));
+            }
+            
+            return {
+                lift, drag, weight: totalWeight, netLift, tension,
+                cg, cp, torque: adjustedTorque, ar, isStable,
+                cl, cd, bridleAngle,
+                flightHeight, horizontalDistance,
+                tailDrag, stabilityBonus
+            };
+        }
+
+        // [Continue with all chart generation, drawing, and UI functions from previous version]
+        // [Due to length limits, I'm showing the structure - all functions remain identical]
+
+function generateTorqueData() {
+            const data = [];
+            const originalAngle = angle;
+            for (let testAngle = 0; testAngle <= 45; testAngle += 1) {
+                angle = testAngle;
+                const physics = calculatePhysics();
+                data.push({ angle: testAngle, torque: physics.torque });
+            }
+            angle = originalAngle;
+            return data;
+        }
+        
+        function generateForcesData() {
+            const data = [];
+            const originalAngle = angle;
+            for (let testAngle = 0; testAngle <= 45; testAngle += 1) {
+                angle = testAngle;
+                const physics = calculatePhysics();
+                data.push({ 
+                    angle: testAngle, 
+                    lift: physics.lift, 
+                    drag: physics.drag,
+                    weight: physics.weight
+                });
+            }
+            angle = originalAngle;
+            return data;
+        }
+        
+        function generateStabilityData() {
+            const data = [];
+            const originalAngle = angle;
+            const originalKnot = knotPosition;
+            
+            for (let testKnot = 6; testKnot <= 60; testKnot += 2) {
+                for (let testAngle = 0; testAngle <= 45; testAngle += 2) {
+                    angle = testAngle;
+                    knotPosition = testKnot;
+                    const physics = calculatePhysics();
+                    const stable = Math.abs(physics.torque);
+                    data.push({
+                        angle: testAngle,
+                        knot: testKnot,
+                        stability: stable
+                    });
+                }
+            }
+            
+            angle = originalAngle;
+            knotPosition = originalKnot;
+            return data;
+        }
+        
+        function generateWindEnvelopeData() {
+            const data = [];
+            const originalWind = currentWind;
+            
+            for (let testWind = 5; testWind <= 80; testWind += 2) {
+                currentWind = testWind;
+                const physics = calculatePhysics();
+                data.push({
+                    wind: testWind,
+                    netLift: physics.netLift,
+                    lift: physics.lift,
+                    drag: physics.drag
+                });
+            }
+            
+            currentWind = originalWind;
+            return data;
+        }
+
+        function getTorqueChartConfig(isLarge = false) {
+            const torqueData = generateTorqueData();
+            return {
+                type: 'line',
+                data: {
+                    labels: torqueData.map(d => d.angle + '°'),
+                    datasets: [{
+                        label: 'Torque',
+                        data: torqueData.map(d => d.torque),
+                        borderColor: '#00FF9D',
+                        backgroundColor: 'rgba(0, 255, 157, 0.1)',
+                        borderWidth: isLarge ? 3 : 1,
+                        pointRadius: isLarge ? 3 : 0,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Zero Line',
+                        data: torqueData.map(() => 0),
+                        borderColor: '#FF6B35',
+                        borderWidth: isLarge ? 2 : 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }, {
+                        label: 'Current',
+                        data: torqueData.map(d => d.angle === Math.round(angle) ? d.torque : null),
+                        pointRadius: isLarge ? 10 : 5,
+                        pointBackgroundColor: '#FFD700',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        showLine: false
+                    }]
+                },
+                options: getChartOptions(isLarge, 'Angle of Attack (°)', 'Torque (lb·in)')
+            };
+        }
+        
+        function getForcesChartConfig(isLarge = false) {
+            const forcesData = generateForcesData();
+            return {
+                type: 'line',
+                data: {
+                    labels: forcesData.map(d => d.angle + '°'),
+                    datasets: [{
+                        label: 'Lift',
+                        data: forcesData.map(d => d.lift),
+                        borderColor: '#00A8FF',
+                        backgroundColor: 'rgba(0, 168, 255, 0.1)',
+                        borderWidth: isLarge ? 3 : 1,
+                        pointRadius: isLarge ? 3 : 0,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Drag',
+                        data: forcesData.map(d => d.drag),
+                        borderColor: '#FF6B35',
+                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                        borderWidth: isLarge ? 3 : 1,
+                        pointRadius: isLarge ? 3 : 0,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Weight',
+                        data: forcesData.map(d => d.weight),
+                        borderColor: '#FFD700',
+                        borderWidth: isLarge ? 2 : 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }, {
+                        label: 'Current',
+                        data: forcesData.map(d => d.angle === Math.round(angle) ? d.lift : null),
+                        pointRadius: isLarge ? 10 : 5,
+                        pointBackgroundColor: '#00FF9D',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        showLine: false
+                    }]
+                },
+                options: getChartOptions(isLarge, 'Angle of Attack (°)', 'Force (lbs)')
+            };
+        }
+        
+        function getStabilityChartConfig(isLarge = false) {
+            const stabilityData = generateStabilityData();
+            const uniqueAngles = [...new Set(stabilityData.map(d => d.angle))].sort((a, b) => a - b);
+            const uniqueKnots = [...new Set(stabilityData.map(d => d.knot))].sort((a, b) => a - b);
+            
+            const matrixData = [];
+            for (let i = 0; i < uniqueKnots.length; i++) {
+                const row = [];
+                for (let j = 0; j < uniqueAngles.length; j++) {
+                    const point = stabilityData.find(d => d.knot === uniqueKnots[i] && d.angle === uniqueAngles[j]);
+                    row.push(point ? point.stability : null);
+                }
+                matrixData.push(row);
+            }
+            
+            const datasets = matrixData.map((row, knotIdx) => ({
+                label: `${uniqueKnots[knotIdx]}"`,
+                data: row.map((val, angleIdx) => ({
+                    x: uniqueAngles[angleIdx],
+                    y: uniqueKnots[knotIdx],
+                    v: val
+                })),
+                backgroundColor: row.map(val => {
+                    if (val === null) return 'rgba(0,0,0,0)';
+                    if (val < 5) return 'rgba(0, 255, 157, 0.7)';
+                    if (val < 15) return 'rgba(255, 215, 0, 0.7)';
+                    return 'rgba(255, 107, 53, 0.7)';
+                }),
+                borderWidth: 0,
+                pointRadius: isLarge ? 8 : 4,
+                pointStyle: 'rect'
+            }));
+            
+            datasets.push({
+                label: 'Current Position',
+                data: [{x: angle, y: knotPosition, v: 0}],
+                pointRadius: isLarge ? 12 : 6,
+                pointBackgroundColor: '#FFFFFF',
+                pointBorderColor: '#000000',
+                pointBorderWidth: 2,
+                showLine: false
+            });
+            
+            return {
+                type: 'scatter',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        zoom: isLarge ? {
+                            pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' }
+                        } : undefined,
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label === 'Current Position') {
+                                        return 'Current: ' + angle.toFixed(1) + '° @ ' + knotPosition + '"';
+                                    }
+                                    const val = context.raw.v;
+                                    if (val < 5) return 'Stable (|τ| < 5)';
+                                    if (val < 15) return 'Marginal (5 < |τ| < 15)';
+                                    return 'Unstable (|τ| > 15)';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: isLarge, text: 'Angle of Attack (°)', color: '#00FF9D' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#00FF9D', font: { size: isLarge ? 12 : 8 } }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: { display: isLarge, text: 'Knot Position (in)', color: '#00FF9D' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#00FF9D', font: { size: isLarge ? 12 : 8 } }
+                        }
+                    }
+                }
+            };
+        }
+        
+        function getWindEnvelopeConfig(isLarge = false) {
+            const windData = generateWindEnvelopeData();
+            return {
+                type: 'line',
+                data: {
+                    labels: windData.map(d => d.wind),
+                    datasets: [{
+                        label: 'Net Lift',
+                        data: windData.map(d => d.netLift),
+                        borderColor: '#00A8FF',
+                        backgroundColor: windData.map(d => 
+                            d.netLift > 0 ? 'rgba(0, 168, 255, 0.3)' : 'rgba(255, 107, 53, 0.3)'
+                        ),
+                        borderWidth: isLarge ? 3 : 1,
+                        pointRadius: isLarge ? 3 : 0,
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Zero Line',
+                        data: windData.map(() => 0),
+                        borderColor: '#FFD700',
+                        borderWidth: isLarge ? 2 : 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }, {
+                        label: 'Current Wind',
+                        data: windData.map(d => Math.abs(d.wind - currentWind) < 1 ? d.netLift : null),
+                        pointRadius: isLarge ? 10 : 5,
+                        pointBackgroundColor: '#00FF9D',
+                        pointBorderColor: '#FFFFFF',
+                        pointBorderWidth: 2,
+                        showLine: false
+                    }]
+                },
+                options: getChartOptions(isLarge, 'Wind Speed (mph)', 'Net Lift (lbs)')
+            };
+        }
+        
+        function getChartOptions(isLarge, xLabel, yLabel) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    zoom: isLarge ? {
+                        pan: { enabled: true, mode: 'xy', modifierKey: 'ctrl' },
+                        zoom: { 
+                            wheel: { enabled: true, speed: 0.1 },
+                            pinch: { enabled: true },
+                            mode: 'xy'
+                        }
+                    } : undefined,
+                    legend: {
+                        display: isLarge,
+                        labels: {
+                            color: '#FFFFFF',
+                            font: { family: 'Courier New', size: isLarge ? 12 : 8 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        borderColor: '#00FF9D',
+                        borderWidth: 1,
+                        titleColor: '#00FF9D',
+                        bodyColor: '#FFFFFF',
+                        titleFont: { family: 'Courier New' },
+                        bodyFont: { family: 'Courier New' }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: {
+                            color: '#00FF9D',
+                            font: { size: isLarge ? 12 : 8, family: 'Courier New' }
+                        },
+                        title: {
+                            display: isLarge,
+                            text: xLabel,
+                            color: '#00FF9D',
+                            font: { size: 14, family: 'Courier New', weight: 'bold' }
+                        }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        ticks: {
+                            color: '#00FF9D',
+                            font: { size: isLarge ? 12 : 8, family: 'Courier New' }
+                        },
+                        title: {
+                            display: isLarge,
+                            text: yLabel,
+                            color: '#00FF9D',
+                            font: { size: 14, family: 'Courier New', weight: 'bold' }
+                        }
+                    }
+                }
+            };
+        }
+        
+        function updateMiniCharts() {
+            if (miniCharts.torque) miniCharts.torque.destroy();
+            if (miniCharts.forces) miniCharts.forces.destroy();
+            if (miniCharts.stability) miniCharts.stability.destroy();
+            if (miniCharts.wind) miniCharts.wind.destroy();
+            
+            miniCharts.torque = new Chart(document.getElementById('miniTorque'), getTorqueChartConfig(false));
+            miniCharts.forces = new Chart(document.getElementById('miniForces'), getForcesChartConfig(false));
+            miniCharts.stability = new Chart(document.getElementById('miniStability'), getStabilityChartConfig(false));
+            miniCharts.wind = new Chart(document.getElementById('miniWind'), getWindEnvelopeConfig(false));
+        }
+        
+        function updateLargeChart(chartType) {
+            if (largeCharts[chartType]) largeCharts[chartType].destroy();
+            
+            const canvasId = chartType + 'ChartLarge';
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            let config;
+            if (chartType === 'torque') config = getTorqueChartConfig(true);
+            else if (chartType === 'forces') config = getForcesChartConfig(true);
+            else if (chartType === 'stability') config = getStabilityChartConfig(true);
+            else if (chartType === 'wind') config = getWindEnvelopeConfig(true);
+            
+            largeCharts[chartType] = new Chart(ctx, config);
+        }
+        
+        function autoTrim() {
+            const btn = document.getElementById('autoTrimBtn');
+            const info = document.getElementById('trimInfo');
+            
+            btn.classList.add('calculating');
+            btn.textContent = '⏳ CALCULATING...';
+            info.style.display = 'block';
+            
+            setTimeout(() => {
+                let bestAngle = 15;
+                let minTorque = Infinity;
+                
+                for (let testAngle = 0; testAngle <= 45; testAngle += 0.5) {
+                    angle = testAngle;
+                    const physics = calculatePhysics();
+                    
+                    if (Math.abs(physics.torque) < Math.abs(minTorque)) {
+                        minTorque = physics.torque;
+                        bestAngle = testAngle;
+                    }
+                }
+                
+                angle = bestAngle;
+                document.getElementById('angleSlider').value = angle;
+                document.getElementById('angleValue').textContent = angle.toFixed(1) + '°';
+                
+                updateUI();
+                
+                btn.classList.remove('calculating');
+                btn.textContent = '✓ AUTO-TRIM (Best: ' + angle.toFixed(1) + '°)';
+                info.textContent = 'Optimal trim angle found! Torque: ' + minTorque.toFixed(3) + ' lb·in';
+                
+                setTimeout(() => {
+                    btn.textContent = '🎯 AUTO-TRIM (Find Best Angle)';
+                    info.style.display = 'none';
+                }, 3000);
+            }, 100);
+        }
+
+        function drawTail(startX, startY, isField = false) {
+            if (tailLength === 0) return;
+            
+            const scale = isField ? 1.5 : 3;
+            const tailLen = tailLength * scale;
+            const segments = 8;
+            
+            ctx.strokeStyle = '#FF6BFF';
+            ctx.lineWidth = tailType === 'ribbon' ? 2 : (tailType === 'streamer' ? 4 : 6);
+            
+            if (tailType === 'bow') {
+                for (let offset = -5; offset <= 5; offset += 5) {
+                    ctx.beginPath();
+                    ctx.moveTo(startX + offset, startY);
+                    for (let i = 1; i <= segments; i++) {
+                        const t = i / segments;
+                        const wave = Math.sin(t * PI * 3 + simulationTime * 2) * 10;
+                        const x = startX + offset + wave;
+                        const y = startY + tailLen * t;
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+            } else if (tailType === 'streamer') {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                for (let i = 1; i <= segments; i++) {
+                    const t = i / segments;
+                    const wave = Math.sin(t * PI * 4 + simulationTime * 3) * 15;
+                    const x = startX + wave;
+                    const y = startY + tailLen * t;
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                for (let i = 1; i <= segments; i++) {
+                    const t = i / segments;
+                    const wave = Math.sin(t * PI * 2 + simulationTime * 2) * 8;
+                    const x = startX + wave;
+                    const y = startY + tailLen * t;
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawFrontView() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = 3;
+            const kiteW = width * scale;
+            const kiteH = height * scale;
+            const physics = calculatePhysics();
+            
+            ctx.fillStyle = 'rgba(255, 107, 53, 0.5)';
+            ctx.strokeStyle = '#FF6B35';
+            ctx.lineWidth = 3;
+            
+            if (kiteType === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(centerX + kiteW/2, centerY);
+                ctx.lineTo(centerX, centerY + kiteH/2);
+                ctx.lineTo(centerX - kiteW/2, centerY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (kiteType === 'delta') {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(centerX + kiteW/2, centerY + kiteH/2);
+                ctx.lineTo(centerX - kiteW/2, centerY + kiteH/2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (kiteType === 'box') {
+                const boxW = kiteW * 0.6;
+                const boxH = kiteH * 0.5;
+                ctx.fillStyle = 'rgba(255, 107, 53, 0.7)';
+                ctx.fillRect(centerX - boxW/2, centerY - boxH/2, boxW, boxH);
+                ctx.strokeRect(centerX - boxW/2, centerY - boxH/2, boxW, boxH);
+                const offset = 30;
+                ctx.fillStyle = 'rgba(255, 107, 53, 0.3)';
+                ctx.fillRect(centerX - boxW/2 + offset, centerY - boxH/2 - offset, boxW, boxH);
+                ctx.strokeRect(centerX - boxW/2 + offset, centerY - boxH/2 - offset, boxW, boxH);
+                ctx.beginPath();
+                ctx.moveTo(centerX - boxW/2, centerY - boxH/2);
+                ctx.lineTo(centerX - boxW/2 + offset, centerY - boxH/2 - offset);
+                ctx.moveTo(centerX + boxW/2, centerY - boxH/2);
+                ctx.lineTo(centerX + boxW/2 + offset, centerY - boxH/2 - offset);
+                ctx.moveTo(centerX - boxW/2, centerY + boxH/2);
+                ctx.lineTo(centerX - boxW/2 + offset, centerY + boxH/2 - offset);
+                ctx.moveTo(centerX + boxW/2, centerY + boxH/2);
+                ctx.lineTo(centerX + boxW/2 + offset, centerY + boxH/2 - offset);
+                ctx.stroke();
+            } else if (kiteType === 'fighter') {
+                const fW = kiteW * 0.65;
+                const fH = kiteH * 0.65;
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - fH/2);
+                ctx.lineTo(centerX + fW/2, centerY + fH/6);
+                ctx.lineTo(centerX, centerY + fH/2);
+                ctx.lineTo(centerX - fW/2, centerY + fH/6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            drawTail(centerX, centerY + kiteH/2);
+            
+            ctx.strokeStyle = '#1A1A2E';
+            ctx.lineWidth = 4;
+            if (kiteType === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(centerX, centerY + kiteH/2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(centerX - kiteW/2, centerY);
+                ctx.lineTo(centerX + kiteW/2, centerY);
+                ctx.stroke();
+            } else if (kiteType === 'delta') {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(centerX, centerY + kiteH/2);
+                ctx.stroke();
+            } else if (kiteType === 'fighter') {
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY - kiteH*0.65/2);
+                ctx.lineTo(centerX, centerY + kiteH*0.65/2);
+                ctx.stroke();
+            }
+            
+            const cgY = centerY + kiteH/2 - physics.cg * scale;
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.arc(centerX, cgY, 8, 0, 2 * PI);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            const cpY = centerY + kiteH/2 - physics.cp * scale;
+            ctx.fillStyle = '#00FF9D';
+            ctx.beginPath();
+            ctx.arc(centerX, cpY, 8, 0, 2 * PI);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillStyle = '#FF0000';
+            ctx.fillText('CG', centerX + 15, cgY + 5);
+            ctx.fillStyle = '#00FF9D';
+            ctx.fillText('CP', centerX + 15, cpY + 5);
+            
+            const knotY = centerY + kiteH/2 - knotPosition * scale;
+            const bridleX = centerX - 80;
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (kiteType === 'delta') {
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(bridleX, knotY);
+                ctx.lineTo(centerX - kiteW/4, centerY + kiteH/2);
+            } else if (kiteType === 'box') {
+                ctx.moveTo(centerX, centerY - kiteH*0.25);
+                ctx.lineTo(bridleX, knotY);
+                ctx.lineTo(centerX, centerY + kiteH*0.25);
+            } else {
+                ctx.moveTo(centerX, centerY - kiteH/2);
+                ctx.lineTo(bridleX, knotY);
+                ctx.lineTo(centerX, centerY + kiteH/2);
+            }
+            ctx.stroke();
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(bridleX, knotY, 6, 0, 2 * PI);
+            ctx.fill();
+            
+            const forceScale = 50;
+            if (physics.lift > 0) {
+                const liftLen = physics.lift * forceScale;
+                drawArrow(centerX, centerY, centerX, centerY - liftLen, '#00A8FF', 'LIFT');
+            }
+            if (physics.drag > 0) {
+                const dragLen = physics.drag * forceScale;
+                drawArrow(centerX, centerY, centerX + dragLen, centerY, '#FF0000', 'DRAG');
+            }
+            const weightLen = physics.weight * forceScale;
+            drawArrow(centerX, centerY, centerX, centerY + weightLen, '#FFD700', 'WEIGHT');
+        }
+
+        function drawSideView() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2 - 50;
+            const scale = 3;
+            const kiteH = height * scale;
+            const physics = calculatePhysics();
+            const angleRad = angle * PI / 180;
+            
+            ctx.strokeStyle = '#00FF9D';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            for (let i = 0; i < 5; i++) {
+                const y = 80 + i * 50;
+                const arrowLen = 80;
+                const startX = 60;
+                const endX = startX + arrowLen;
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(endX, y);
+                ctx.lineTo(endX - 10, y - 5);
+                ctx.moveTo(endX, y);
+                ctx.lineTo(endX - 10, y + 5);
+                ctx.stroke();
+            }
+            
+            ctx.font = 'bold 14px Courier New';
+            ctx.fillStyle = '#00FF9D';
+            ctx.fillText(`Wind: ${currentWind.toFixed(1)} mph →`, 60, 60);
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(-angleRad);
+            
+            let kiteWidth = 25;
+            if (kiteType === 'box') kiteWidth = 40;
+            else if (kiteType === 'fighter') kiteWidth = 18;
+            
+            ctx.fillStyle = 'rgba(255, 107, 53, 0.6)';
+            ctx.strokeStyle = '#FF6B35';
+            ctx.lineWidth = 3;
+            
+            if (kiteType === 'box') {
+                ctx.fillRect(-kiteWidth/2, -kiteH/3, kiteWidth, kiteH/6);
+                ctx.strokeRect(-kiteWidth/2, -kiteH/3, kiteWidth, kiteH/6);
+                ctx.fillRect(-kiteWidth/2, kiteH/6, kiteWidth, kiteH/6);
+                ctx.strokeRect(-kiteWidth/2, kiteH/6, kiteWidth, kiteH/6);
+            } else {
+                ctx.fillRect(-kiteWidth/2, -kiteH/2, kiteWidth, kiteH);
+                ctx.strokeRect(-kiteWidth/2, -kiteH/2, kiteWidth, kiteH);
+            }
+            
+            ctx.strokeStyle = '#1A1A2E';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(0, -kiteH/2);
+            ctx.lineTo(0, kiteH/2);
+            ctx.stroke();
+            ctx.restore();
+            
+            const tailStartX = centerX + kiteH/2 * Math.sin(angleRad);
+            const tailStartY = centerY + kiteH/2 * Math.cos(angleRad);
+            if (tailLength > 0) {
+                const tailLen = tailLength * scale;
+                const segments = 8;
+                ctx.strokeStyle = '#FF6BFF';
+                ctx.lineWidth = tailType === 'ribbon' ? 2 : (tailType === 'streamer' ? 4 : 6);
+                
+                ctx.beginPath();
+                ctx.moveTo(tailStartX, tailStartY);
+                for (let i = 1; i <= segments; i++) {
+                    const t = i / segments;
+                    const wave = Math.sin(t * PI * 3 + simulationTime * 2) * 10;
+                    const x = tailStartX + wave * Math.cos(angleRad) + tailLen * t * Math.sin(angleRad);
+                    const y = tailStartY + tailLen * t * Math.cos(angleRad) - wave * Math.sin(angleRad);
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            
+            const knotDist = 70;
+            const knotX = centerX - knotDist;
+            const knotY = centerY;
+            const topX = centerX - kiteH/2 * Math.sin(angleRad);
+            const topY = centerY - kiteH/2 * Math.cos(angleRad);
+            const botX = centerX + kiteH/2 * Math.sin(angleRad);
+            const botY = centerY + kiteH/2 * Math.cos(angleRad);
+            
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(topX, topY);
+            ctx.lineTo(knotX, knotY);
+            ctx.lineTo(botX, botY);
+            ctx.stroke();
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(knotX, knotY, 7, 0, 2 * PI);
+            ctx.fill();
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            const personX = 80;
+            const personY = canvas.height - 100;
+            ctx.strokeStyle = '#FF00FF';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(personX, personY);
+            ctx.lineTo(knotX, knotY);
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#FF6B35';
+            ctx.fillStyle = '#FF6B35';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(personX, personY - 30, 12, 0, 2 * PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(personX, personY - 18);
+            ctx.lineTo(personX, personY + 10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(personX - 15, personY - 10);
+            ctx.lineTo(personX, personY - 5);
+            ctx.lineTo(personX + 15, personY - 10);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(personX, personY + 10);
+            ctx.lineTo(personX - 10, personY + 30);
+            ctx.moveTo(personX, personY + 10);
+            ctx.lineTo(personX + 10, personY + 30);
+            ctx.stroke();
+            
+            const forceScale = 50;
+            if (physics.lift > 0) {
+                const liftLen = physics.lift * forceScale;
+                const liftEndX = centerX - liftLen * Math.sin(angleRad);
+                const liftEndY = centerY - liftLen * Math.cos(angleRad);
+                drawArrow(centerX, centerY, liftEndX, liftEndY, '#00A8FF', 'LIFT');
+            }
+            if (physics.drag > 0) {
+                const dragLen = physics.drag * forceScale;
+                drawArrow(centerX, centerY, centerX + dragLen, centerY, '#FF0000', 'DRAG');
+            }
+            const weightLen = physics.weight * forceScale;
+            drawArrow(centerX, centerY, centerX, centerY + weightLen, '#FFD700', 'WEIGHT');
+            
+            ctx.strokeStyle = '#00FF9D';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 50, 0, -angleRad, true);
+            ctx.stroke();
+            ctx.font = 'bold 18px Courier New';
+            ctx.fillStyle = '#00FF9D';
+            ctx.fillText(`α = ${angle.toFixed(1)}°`, centerX + 60, centerY - 35);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(centerX - 100, centerY);
+            ctx.lineTo(centerX + 100, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        function drawFieldView() {
+            const physics = calculatePhysics();
+            const groundY = canvas.height - 80;
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
+            skyGrad.addColorStop(0, 'rgba(0, 100, 200, 0.15)');
+            skyGrad.addColorStop(1, 'rgba(0, 150, 255, 0.05)');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, groundY);
+            ctx.fillStyle = 'rgba(0, 255, 157, 0.1)';
+            ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+            ctx.strokeStyle = '#00FF9D';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+            
+            const personX = 100;
+            const personY = groundY;
+            ctx.strokeStyle = '#FF6B35';
+            ctx.fillStyle = '#FF6B35';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(personX, personY - 45, 15, 0, 2 * PI);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(personX, personY - 30);
+            ctx.lineTo(personX, personY + 20);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(personX - 20, personY - 15);
+            ctx.lineTo(personX, personY - 10);
+            ctx.lineTo(personX + 20, personY - 15);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(personX, personY + 20);
+            ctx.lineTo(personX - 12, personY + 50);
+            ctx.moveTo(personX, personY + 20);
+            ctx.lineTo(personX + 12, personY + 50);
+            ctx.stroke();
+            
+            const scale = 1.5;
+            const kiteX = personX + physics.horizontalDistance * scale;
+            const kiteY = groundY - physics.flightHeight * scale;
+            ctx.strokeStyle = '#FF00FF';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(personX, personY - 20);
+            const numPoints = 30;
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const x = personX + (kiteX - personX) * t;
+                const sag = 25 * Math.sin(t * PI);
+                const y = personY - 20 + (kiteY - (personY - 20)) * t + sag;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            const angleRad = angle * PI / 180;
+            ctx.save();
+            ctx.translate(kiteX, kiteY);
+            ctx.rotate(-angleRad * 0.5);
+            let kSize = 20;
+            if (kiteType === 'fighter') kSize = 15;
+            if (kiteType === 'box') kSize = 25;
+            ctx.fillStyle = 'rgba(255, 107, 53, 0.8)';
+            ctx.strokeStyle = '#FF6B35';
+            ctx.lineWidth = 3;
+            
+            if (kiteType === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(0, -kSize);
+                ctx.lineTo(kSize * 0.7, 0);
+                ctx.lineTo(0, kSize);
+                ctx.lineTo(-kSize * 0.7, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (kiteType === 'delta') {
+                ctx.beginPath();
+                ctx.moveTo(0, -kSize);
+                ctx.lineTo(kSize * 0.8, kSize);
+                ctx.lineTo(-kSize * 0.8, kSize);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            } else if (kiteType === 'box') {
+                ctx.fillRect(-kSize*0.5, -kSize*0.4, kSize, kSize*0.8);
+                ctx.strokeRect(-kSize*0.5, -kSize*0.4, kSize, kSize*0.8);
+            } else if (kiteType === 'fighter') {
+                ctx.beginPath();
+                ctx.moveTo(0, -kSize);
+                ctx.lineTo(kSize * 0.6, kSize * 0.2);
+                ctx.lineTo(0, kSize);
+                ctx.lineTo(-kSize * 0.6, kSize * 0.2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            
+            drawTail(0, kSize, true);
+            
+            ctx.strokeStyle = '#00FF9D';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, kSize);
+            ctx.lineTo(0, kSize + 30);
+            ctx.stroke();
+            ctx.restore();
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(kiteX, kiteY);
+            ctx.lineTo(kiteX, groundY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(personX, groundY - 10);
+            ctx.lineTo(kiteX, groundY - 10);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.font = 'bold 14px Courier New';
+            ctx.fillStyle = '#00A8FF';
+            ctx.fillText(`H: ${physics.flightHeight.toFixed(1)} ft`, kiteX + 15, kiteY);
+            ctx.fillStyle = '#00FF9D';
+            const midX = (personX + kiteX) / 2;
+            ctx.fillText(`D: ${physics.horizontalDistance.toFixed(1)} ft`, midX - 40, groundY - 20);
+            ctx.font = 'bold 15px Courier New';
+            ctx.fillStyle = '#00FF9D';
+            ctx.fillText(`Wind: ${currentWind.toFixed(1)} mph →`, canvas.width - 180, 40);
+            ctx.fillStyle = '#FF00FF';
+            ctx.font = '13px Courier New';
+            ctx.fillText(`Line: ${lineLength} ft`, personX + 20, personY - 60);
+        }
+        
+        function drawArrow(x1, y1, x2, y2, color, label) {
+            const headlen = 12;
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x2, y2);
+            ctx.lineTo(x2 - headlen * Math.cos(angle - PI / 6), 
+                       y2 - headlen * Math.sin(angle - PI / 6));
+            ctx.lineTo(x2 - headlen * Math.cos(angle + PI / 6), 
+                       y2 - headlen * Math.sin(angle + PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.font = 'bold 12px Courier New';
+            ctx.fillStyle = color;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            if (Math.abs(dy) > Math.abs(dx)) {
+                ctx.fillText(label, x2 + 10, y2);
+            } else {
+                ctx.fillText(label, x2, y2 - 10);
+            }
+        }
+        
+        function drawKite() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (currentView !== 'field') {
+                ctx.strokeStyle = 'rgba(0, 255, 157, 0.1)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < canvas.width; x += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+            if (currentView === 'front') drawFrontView();
+            else if (currentView === 'side') drawSideView();
+            else if (currentView === 'field') drawFieldView();
+        }
+        
+        function updateUI() {
+            const physics = calculatePhysics();
+            document.getElementById('liftOut').textContent = physics.lift.toFixed(3) + ' lbs';
+            document.getElementById('dragOut').textContent = physics.drag.toFixed(3) + ' lbs';
+            document.getElementById('weightOut').textContent = physics.weight.toFixed(1) + ' lbs';
+            document.getElementById('netLiftOut').textContent = physics.netLift.toFixed(3) + ' lbs';
+            document.getElementById('tensionOut').textContent = physics.tension.toFixed(3) + ' lbs';
+            document.getElementById('cgOut').textContent = physics.cg.toFixed(2) + ' in';
+            document.getElementById('cpOut').textContent = physics.cp.toFixed(2) + ' in';
+            document.getElementById('torqueOut').textContent = physics.torque.toFixed(3) + ' lb·in';
+            document.getElementById('arOut').textContent = physics.ar.toFixed(2);
+            document.getElementById('flightHeightOut').textContent = physics.flightHeight.toFixed(1) + ' ft';
+            document.getElementById('horizDistOut').textContent = physics.horizontalDistance.toFixed(1) + ' ft';
+            document.getElementById('lineLengthOut').textContent = lineLength + ' ft';
+            document.getElementById('bridleAngleOut').textContent = physics.bridleAngle.toFixed(1) + '°';
+            
+            if (tailLength > 0) {
+                const tailLabels = {'ribbon': 'Ribbon', 'streamer': 'Streamer', 'bow': 'Bow'};
+                document.getElementById('tailEffectOut').textContent = 
+                    `${tailLabels[tailType]} (${tailLength}" / +${((physics.stabilityBonus - 1) * 100).toFixed(0)}% stability)`;
+            } else {
+                document.getElementById('tailEffectOut').textContent = 'No Tail';
+            }
+            
+            const indicator = document.getElementById('stabilityIndicator');
+            if (physics.isStable) {
+                indicator.className = 'stability-indicator stable';
+                indicator.textContent = '✓ STABLE';
+            } else {
+                indicator.className = 'stability-indicator unstable';
+                indicator.textContent = '⚠ UNSTABLE';
+            }
+            
+            drawKite();
+            if (!isSimulationRunning) updateMiniCharts();
+        }
+        
+        // EVENT LISTENERS
+        document.getElementById('widthSlider').addEventListener('input', function() {
+            width = parseFloat(this.value);
+            document.getElementById('widthValue').textContent = width + ' in';
+            updateUI();
+        });
+        
+        document.getElementById('heightSlider').addEventListener('input', function() {
+            height = parseFloat(this.value);
+            document.getElementById('heightValue').textContent = height + ' in';
+            updateUI();
+        });
+        
+        document.getElementById('weightSlider').addEventListener('input', function() {
+            weight = parseFloat(this.value);
+            document.getElementById('weightValue').textContent = weight.toFixed(1) + ' lbs';
+            updateUI();
+        });
+        
+        document.getElementById('bridleLengthSlider').addEventListener('input', function() {
+            bridleLength = parseFloat(this.value);
+            document.getElementById('bridleLengthValue').textContent = bridleLength + ' in';
+            updateUI();
+        });
+        
+        document.getElementById('knotPositionSlider').addEventListener('input', function() {
+            knotPosition = parseFloat(this.value);
+            document.getElementById('knotPositionValue').textContent = knotPosition + ' in';
+            updateUI();
+        });
+        
+        document.getElementById('windSlider').addEventListener('input', function() {
+            baseWind = parseFloat(this.value);
+            document.getElementById('windValue').textContent = baseWind + ' mph';
+            currentWind = baseWind;
+            updateUI();
+        });
+        
+        document.getElementById('windProfileSelect').addEventListener('change', function() {
+            windProfile = this.value;
+            const labels = {'steady': 'Steady', 'gust': 'Gust', 'turbulent': 'Turbulent'};
+            document.getElementById('windProfileValue').textContent = labels[windProfile];
+            document.getElementById('windProfileLabel').textContent = 'Profile: ' + labels[windProfile].toUpperCase();
+            const showGustControls = windProfile !== 'steady';
+            document.getElementById('gustIntensityRow').style.display = showGustControls ? '' : 'none';
+            const showFreqControls = windProfile === 'gust';
+            document.getElementById('gustFrequencyRow').style.display = showFreqControls ? '' : 'none';
+            resetSimulation();
+        });
+        
+        document.getElementById('gustIntensitySlider').addEventListener('input', function() {
+            gustIntensity = parseFloat(this.value);
+            document.getElementById('gustIntensityValue').textContent = gustIntensity + '%';
+        });
+        
+        document.getElementById('gustFrequencySlider').addEventListener('input', function() {
+            gustFrequency = parseFloat(this.value);
+            document.getElementById('gustFrequencyValue').textContent = gustFrequency.toFixed(1) + ' sec';
+        });
+        
+        document.getElementById('angleSlider').addEventListener('input', function() {
+            angle = parseFloat(this.value);
+            document.getElementById('angleValue').textContent = angle.toFixed(1) + '°';
+            updateUI();
+        });
+        
+        document.getElementById('lineLengthSlider').addEventListener('input', function() {
+            lineLength = parseFloat(this.value);
+            document.getElementById('lineLengthValue').textContent = lineLength + ' ft';
+            updateUI();
+        });
+        
+        document.getElementById('kiteTypeSelect').addEventListener('change', function() {
+            kiteType = this.value;
+            const labels = {'diamond': 'Diamond', 'delta': 'Delta', 'box': 'Box Kite', 'fighter': 'Fighter'};
+            document.getElementById('kiteTypeValue').textContent = labels[kiteType];
+            updateUI();
+        });
+        
+        document.getElementById('tailLengthSlider').addEventListener('input', function() {
+            tailLength = parseFloat(this.value);
+            document.getElementById('tailLengthValue').textContent = 
+                tailLength > 0 ? tailLength + ' in' : '0 in (No Tail)';
+            updateUI();
+        });
+        
+        document.getElementById('tailWeightSlider').addEventListener('input', function() {
+            tailWeight = parseFloat(this.value);
+            document.getElementById('tailWeightValue').textContent = tailWeight.toFixed(1) + ' lbs';
+            updateUI();
+        });
+        
+        document.getElementById('tailTypeSelect').addEventListener('change', function() {
+            tailType = this.value;
+            const labels = {'ribbon': 'Ribbon', 'streamer': 'Streamer', 'bow': 'Bow'};
+            document.getElementById('tailTypeValue').textContent = labels[tailType];
+            updateUI();
+        });
+        
+        document.getElementById('autoTrimBtn').addEventListener('click', autoTrim);
+        
+        updateUI();
+    </script>
+</body>
+</html>
